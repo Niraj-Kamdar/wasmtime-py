@@ -26,10 +26,8 @@ def wat2wasm(wat: typing.Union[str, bytes]) -> bytearray:
         wat = wat.encode('utf8')
     wat_buffer = create_string_buffer(wat)
     wasm = ffi.wasm_byte_vec_t()
-    error = ffi.wasmtime_wat2wasm(wat_buffer, len(wat), byref(wasm))
-    if error:
+    if error := ffi.wasmtime_wat2wasm(wat_buffer, len(wat), byref(wasm)):
         raise WasmtimeError._from_ptr(error)
-    else:
-        ret = ffi.to_bytes(wasm)
-        ffi.wasm_byte_vec_delete(byref(wasm))
-        return ret
+    ret = ffi.to_bytes(wasm)
+    ffi.wasm_byte_vec_delete(byref(wasm))
+    return ret

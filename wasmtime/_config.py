@@ -134,7 +134,7 @@ class Config:
         elif strategy == "cranelift":
             ffi.wasmtime_config_strategy_set(self._ptr, 1)
         else:
-            raise WasmtimeError("unknown strategy: " + str(strategy))
+            raise WasmtimeError(f"unknown strategy: {strategy}")
 
     @setter_property
     def cranelift_debug_verifier(self, enable: bool) -> None:
@@ -151,16 +151,16 @@ class Config:
         elif opt_level == "speed_and_size":
             ffi.wasmtime_config_cranelift_opt_level_set(self._ptr, 2)
         else:
-            raise WasmtimeError("unknown opt level: " + str(opt_level))
+            raise WasmtimeError(f"unknown opt level: {opt_level}")
 
     @setter_property
     def profiler(self, profiler: str) -> None:
-        if profiler == "none":
-            ffi.wasmtime_config_profiler_set(self._ptr, 0)
-        elif profiler == "jitdump":
+        if profiler == "jitdump":
             ffi.wasmtime_config_profiler_set(self._ptr, 1)
+        elif profiler == "none":
+            ffi.wasmtime_config_profiler_set(self._ptr, 0)
         else:
-            raise WasmtimeError("unknown profiler: " + str(profiler))
+            raise WasmtimeError(f"unknown profiler: {profiler}")
 
     @setter_property
     def cache(self, enabled: typing.Union[bool, str]) -> None:
@@ -194,10 +194,7 @@ class Config:
         increments.
         """
 
-        if enabled:
-            val = 1
-        else:
-            val = 0
+        val = 1 if enabled else 0
         ffi.wasmtime_config_epoch_interruption_set(self._ptr, val)
 
     @setter_property

@@ -68,10 +68,10 @@ class Trap(Exception):
     def frames(self) -> List["Frame"]:
         frames = FrameList(self)
         ffi.wasm_trap_trace(self._ptr, byref(frames.vec))
-        ret = []
-        for i in range(0, frames.vec.size):
-            ret.append(Frame._from_ptr(frames.vec.data[i], frames))
-        return ret
+        return [
+            Frame._from_ptr(frames.vec.data[i], frames)
+            for i in range(frames.vec.size)
+        ]
 
     @property
     def trap_code(self) -> Optional[TrapCode]:
@@ -124,8 +124,7 @@ class Frame:
         May return `None` if no name can be inferred
         """
 
-        ptr = ffi.wasmtime_frame_func_name(self._ptr)
-        if ptr:
+        if ptr := ffi.wasmtime_frame_func_name(self._ptr):
             return ffi.to_str(ptr.contents)
         else:
             return None
@@ -138,8 +137,7 @@ class Frame:
         May return `None` if no name can be inferred
         """
 
-        ptr = ffi.wasmtime_frame_module_name(self._ptr)
-        if ptr:
+        if ptr := ffi.wasmtime_frame_module_name(self._ptr):
             return ffi.to_str(ptr.contents)
         else:
             return None

@@ -93,10 +93,10 @@ class ValType:
 
     @classmethod
     def _from_list(cls, items: "ctypes._Pointer[ffi.wasm_valtype_vec_t]", owner: Optional[Any]) -> List["ValType"]:
-        types = []
-        for i in range(0, items.contents.size):
-            types.append(ValType._from_ptr(items.contents.data[i], owner))
-        return types
+        return [
+            ValType._from_ptr(items.contents.data[i], owner)
+            for i in range(items.contents.size)
+        ]
 
 
 def take_owned_valtype(ty: ValType) -> "ctypes._Pointer[ffi.wasm_valtype_t]":
@@ -173,10 +173,7 @@ class FuncType:
 
 class GlobalType:
     def __init__(self, valtype: ValType, mutable: bool):
-        if mutable:
-            mutability = ffi.WASM_VAR
-        else:
-            mutability = ffi.WASM_CONST
+        mutability = ffi.WASM_VAR if mutable else ffi.WASM_CONST
         type_ptr = take_owned_valtype(valtype)
         ptr = ffi.wasm_globaltype_new(type_ptr, mutability)
         if ptr == 0:
@@ -230,17 +227,17 @@ class Limits:
         return ffi.wasm_limits_t(self.min, max)
 
     def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Limits):
-            return False
-        return self.min == other.min and self.max == other.max
+        return (
+            self.min == other.min and self.max == other.max
+            if isinstance(other, Limits)
+            else False
+        )
 
     @classmethod
     def _from_ffi(cls, val: 'ctypes._Pointer[ffi.wasm_limits_t]') -> "Limits":
         min = val.contents.min
         max = val.contents.max
-        if max == 0xffffffff:
-            return Limits(min, None)
-        return Limits(min, max)
+        return Limits(min, None) if max == 0xffffffff else Limits(min, max)
 
 
 class TableType:
@@ -291,18 +288,15 @@ class MemoryType:
     def __init__(self, limits: Limits, is_64: bool = False):
         if not isinstance(limits, Limits):
             raise TypeError("expected Limits")
-        if is_64:
-            maximum = 0x10000000000000000
-        else:
-            maximum = 0x100000000
+        maximum = 0x10000000000000000 if is_64 else 0x100000000
         if limits.min >= maximum:
             raise WasmtimeError("minimum size too large")
         if limits.max and limits.max >= maximum:
             raise WasmtimeError("maximum size too large")
-        ptr = ffi.wasmtime_memorytype_new(limits.min,
-                                          limits.max is not None,
-                                          limits.max if limits.max else 0,
-                                          is_64)
+        ptr = ffi.wasmtime_memorytype_new(
+            limits.min, limits.max is not None, limits.max or 0, is_64
+        )
+
         if not ptr:
             raise WasmtimeError("failed to allocate MemoryType")
         self._ptr = ptr
@@ -345,17 +339,13 @@ class MemoryType:
 def wrap_externtype(ptr: "ctypes._Pointer[ffi.wasm_externtype_t]", owner: Optional[Any]) -> "AsExternType":
     if not isinstance(ptr, POINTER(ffi.wasm_externtype_t)):
         raise TypeError("wrong pointer type")
-    val = ffi.wasm_externtype_as_functype(ptr)
-    if val:
+    if val := ffi.wasm_externtype_as_functype(ptr):
         return FuncType._from_ptr(val, owner)
-    val = ffi.wasm_externtype_as_tabletype(ptr)
-    if val:
+    if val := ffi.wasm_externtype_as_tabletype(ptr):
         return TableType._from_ptr(val, owner)
-    val = ffi.wasm_externtype_as_globaltype(ptr)
-    if val:
+    if val := ffi.wasm_externtype_as_globaltype(ptr):
         return GlobalType._from_ptr(val, owner)
-    val = ffi.wasm_externtype_as_memorytype(ptr)
-    if val:
+    if val := ffi.wasm_externtype_as_memorytype(ptr):
         return MemoryType._from_ptr(val, owner)
     raise WasmtimeError("unknown extern type")
 
@@ -389,8 +379,7 @@ class ImportType:
         Note that `None` may be returned for the module linking proposal where
         the field name is optional.
         """
-        ptr = ffi.wasm_importtype_name(self._ptr)
-        if ptr:
+        if ptr := ffi.wasm_importtype_name(self._ptr):
             return ffi.to_str(ptr.contents)
         return None
 

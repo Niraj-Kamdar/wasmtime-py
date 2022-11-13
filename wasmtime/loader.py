@@ -7,6 +7,7 @@ can `import your_wasm_file` which will automatically compile and instantiate
 `your_wasm_file.wasm` and hook it up into Python's module system.
 """
 
+
 from wasmtime import Module, Linker, Store, WasiConfig
 from wasmtime import Func, Table, Global, Memory
 import sys
@@ -16,13 +17,11 @@ import importlib
 from importlib.abc import Loader, MetaPathFinder
 from importlib.util import spec_from_file_location
 
-predefined_modules = []
 store = Store()
 linker = Linker(store.engine)
 # TODO: how to configure wasi?
 store.set_wasi(WasiConfig())
-predefined_modules.append("wasi_snapshot_preview1")
-predefined_modules.append("wasi_unstable")
+predefined_modules = ["wasi_snapshot_preview1", "wasi_unstable"]
 linker.define_wasi()
 linker.allow_shadowing = True
 
@@ -40,13 +39,13 @@ class _WasmtimeMetaFinder(MetaPathFinder):
         else:
             name = fullname
         for entry in path:
-            py = os.path.join(str(entry), name + ".py")
+            py = os.path.join(str(entry), f"{name}.py")
             if os.path.exists(py):
                 continue
-            wasm = os.path.join(str(entry), name + ".wasm")
+            wasm = os.path.join(str(entry), f"{name}.wasm")
             if os.path.exists(wasm):
                 return spec_from_file_location(fullname, wasm, loader=_WasmtimeLoader(wasm))
-            wat = os.path.join(str(entry), name + ".wat")
+            wat = os.path.join(str(entry), f"{name}.wat")
             if os.path.exists(wat):
                 return spec_from_file_location(fullname, wat, loader=_WasmtimeLoader(wat))
 
@@ -72,9 +71,9 @@ class _WasmtimeLoader(Loader):
             imported_module = importlib.import_module(module_name)
             item = imported_module.__dict__[field_name]
             if not isinstance(item, Func) and \
-                    not isinstance(item, Table) and \
-                    not isinstance(item, Global) and \
-                    not isinstance(item, Memory):
+                        not isinstance(item, Table) and \
+                        not isinstance(item, Global) and \
+                        not isinstance(item, Memory):
                 item = Func(store, wasm_import.type, item)
             linker.define(module_name, field_name, item)
 

@@ -31,7 +31,7 @@ def main(platform, arch):
         filename = 'wasmtime-{}-{}-macos-c-api.tar.xz'.format(version, arch)
         libname = '_libwasmtime.dylib'
     else:
-        raise RuntimeError("unknown platform: " + sys.platform)
+        raise RuntimeError(f"unknown platform: {sys.platform}")
 
     url = 'https://github.com/bytecodealliance/wasmtime/releases/download/{}/'.format(version)
     url += filename

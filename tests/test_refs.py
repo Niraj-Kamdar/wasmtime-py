@@ -63,19 +63,19 @@ class TestExternRef(unittest.TestCase):
         ty = TableType(ValType.externref(), Limits(10, None))
         table = Table(store, ty, "init")
 
-        for i in range(0, 10):
+        for i in range(10):
             self.assertEqual(table.get(store, i), "init")
 
         table.grow(store, 2, "grown")
 
-        for i in range(0, 10):
+        for i in range(10):
             self.assertEqual(table.get(store, i), "init")
         for i in range(10, 12):
             self.assertEqual(table.get(store, i), "grown")
 
         table.set(store, 7, "lucky")
 
-        for i in range(0, 7):
+        for i in range(7):
             self.assertEqual(table.get(store, i), "init")
         self.assertEqual(table.get(store, 7), "lucky")
         for i in range(8, 10):

@@ -14,8 +14,7 @@ class Memory:
         """
 
         mem = ffi.wasmtime_memory_t()
-        error = ffi.wasmtime_memory_new(store._context, ty._ptr, byref(mem))
-        if error:
+        if error := ffi.wasmtime_memory_new(store._context, ty._ptr, byref(mem)):
             raise WasmtimeError._from_ptr(error)
         self._memory = mem
 
@@ -41,8 +40,9 @@ class Memory:
         if delta < 0:
             raise WasmtimeError("cannot grow by negative amount")
         prev = ffi.c_uint64(0)
-        error = ffi.wasmtime_memory_grow(store._context, byref(self._memory), delta, byref(prev))
-        if error:
+        if error := ffi.wasmtime_memory_grow(
+            store._context, byref(self._memory), delta, byref(prev)
+        ):
             raise WasmtimeError._from_ptr(error)
         return prev.value
 

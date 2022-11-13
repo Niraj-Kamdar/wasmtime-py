@@ -119,7 +119,7 @@ class TestModule(unittest.TestCase):
         assert(len(module.imports) == 0)
         assert(len(module.exports) == 0)
         with tempfile.TemporaryDirectory() as d:
-            path = d + '/module.bin'
+            path = f'{d}/module.bin'
             with open(path, 'wb') as f:
                 f.write(encoded)
             module = Module.deserialize_file(engine, path)

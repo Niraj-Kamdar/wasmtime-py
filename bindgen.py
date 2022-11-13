@@ -11,8 +11,7 @@ from pycparser import c_ast, parse_file
 
 class Visitor(c_ast.NodeVisitor):
     def __init__(self):
-        self.ret = ''
-        self.ret += '# flake8: noqa\n'
+        self.ret = '' + '# flake8: noqa\n'
         self.ret += '#\n'
         self.ret += '# This is a procedurally generated file, DO NOT EDIT\n'
         self.ret += '# instead edit `./bindgen.py` at the root of the repo\n'
@@ -31,15 +30,15 @@ class Visitor(c_ast.NodeVisitor):
             return
 
         # This is hand-generated since it has an anonymous union in it
-        if node.name == 'wasm_val_t' or node.name == 'wasm_ref_t':
+        if node.name in ['wasm_val_t', 'wasm_ref_t']:
             return
 
         self.ret += "\n"
-        self.ret += "class {}(Structure):\n".format(node.name)
+        self.ret += f"class {node.name}(Structure):\n"
         if node.decls:
             self.ret += "    _fields_ = [\n"
             for decl in node.decls:
-                self.ret += "        (\"{}\", {}),\n".format(decl.name, type_name(decl.type))
+                self.ret += f'        (\"{decl.name}\", {type_name(decl.type)}),\n'
             self.ret += "    ]\n"
             for decl in node.decls:
                 self.ret += "    {}: {}\n".format(decl.name, type_name(decl.type, typing=True))
@@ -51,11 +50,11 @@ class Visitor(c_ast.NodeVisitor):
             return
 
         self.ret += "\n"
-        self.ret += "class {}(Union):\n".format(node.name)
+        self.ret += f"class {node.name}(Union):\n"
         if node.decls:
             self.ret += "    _fields_ = [\n"
             for decl in node.decls:
-                self.ret += "        (\"{}\", {}),\n".format(name(decl.name), type_name(decl.type))
+                self.ret += f'        (\"{name(decl.name)}\", {type_name(decl.type)}),\n'
             self.ret += "    ]\n"
             for decl in node.decls:
                 self.ret += "    {}: {}".format(name(decl.name), type_name(decl.type, typing=True))
@@ -73,9 +72,10 @@ class Visitor(c_ast.NodeVisitor):
         if tyname != node.name:
             self.ret += "\n"
             if isinstance(node.type, c_ast.ArrayDecl):
-                self.ret += "{} = {} * {}\n".format(node.name, type_name(node.type.type), node.type.dim.value)
+                self.ret += f"{node.name} = {type_name(node.type.type)} * {node.type.dim.value}\n"
+
             else:
-                self.ret += "{} = {}\n".format(node.name, type_name(node.type))
+                self.ret += f"{node.name} = {type_name(node.type)}\n"
 
     def visit_FuncDecl(self, node):
         if isinstance(node.type, c_ast.TypeDecl):
@@ -107,11 +107,11 @@ class Visitor(c_ast.NodeVisitor):
             for i, param in enumerate(node.args.params):
                 argname = param.name
                 if not argname or argname == "import" or argname == "global":
-                    argname = "arg{}".format(i)
+                    argname = f"arg{i}"
                 tyname = type_name(param.type)
                 if i == 0 and tyname == "None":
                     continue
-                argpairs.append("{}: Any".format(argname))
+                argpairs.append(f"{argname}: Any")
                 argnames.append(argname)
                 argtypes.append(tyname)
 
@@ -124,16 +124,14 @@ class Visitor(c_ast.NodeVisitor):
 
         self.ret += "\n"
         self.ret += "_{0} = dll.{0}\n".format(name)
-        self.ret += "_{}.restype = {}\n".format(name, type_name(ret, ptr))
-        self.ret += "_{}.argtypes = [{}]\n".format(name, ', '.join(argtypes))
-        self.ret += "def {}({}) -> {}:\n".format(name, ', '.join(argpairs), retty)
-        self.ret += "    return _{}({})  # type: ignore\n".format(name, ', '.join(argnames))
+        self.ret += f"_{name}.restype = {type_name(ret, ptr)}\n"
+        self.ret += f"_{name}.argtypes = [{', '.join(argtypes)}]\n"
+        self.ret += f"def {name}({', '.join(argpairs)}) -> {retty}:\n"
+        self.ret += f"    return _{name}({', '.join(argnames)})  # type: ignore\n"
 
 
 def name(name):
-    if name == 'global':
-        return 'global_'
-    return name
+    return 'global_' if name == 'global' else name
 
 
 def type_name(ty, ptr=False, typing=False):
@@ -146,7 +144,7 @@ def type_name(ty, ptr=False, typing=False):
         if isinstance(ty, c_ast.IdentifierType) and ty.names[0] == "void":
             return "c_void_p"
         elif not isinstance(ty, c_ast.FuncDecl):
-            return "POINTER({})".format(type_name(ty, False, typing))
+            return f"POINTER({type_name(ty, False, typing)})"
 
     if isinstance(ty, c_ast.IdentifierType):
         assert(len(ty.names) == 1)
@@ -195,13 +193,12 @@ def type_name(ty, ptr=False, typing=False):
         else:
             tys.append(type_name(ty.type))
         if ty.args.params:
-            for param in ty.args.params:
-                tys.append(type_name(param.type))
-        return "CFUNCTYPE({})".format(', '.join(tys))
-    elif isinstance(ty, c_ast.PtrDecl) or isinstance(ty, c_ast.ArrayDecl):
+            tys.extend(type_name(param.type) for param in ty.args.params)
+        return f"CFUNCTYPE({', '.join(tys)})"
+    elif isinstance(ty, (c_ast.PtrDecl, c_ast.ArrayDecl)):
         return type_name(ty.type, True, typing)
     else:
-        raise RuntimeError("unknown {}".format(ty))
+        raise RuntimeError(f"unknown {ty}")
 
 
 ast = parse_file(

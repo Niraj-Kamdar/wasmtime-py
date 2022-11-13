@@ -13,7 +13,7 @@ version = "2.0.0"
 if 'PROD' not in os.environ:
     stream = os.popen('git rev-list HEAD --count')
     output = stream.read()
-    version += '.dev' + output.strip()
+    version += f'.dev{output.strip()}'
 
 setuptools.setup(
     name="wasmtime",

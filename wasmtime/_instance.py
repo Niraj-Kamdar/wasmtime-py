@@ -32,14 +32,14 @@ class Instance:
         instance = ffi.wasmtime_instance_t()
         trap = POINTER(ffi.wasm_trap_t)()
         with enter_wasm(store) as trap:
-            error = ffi.wasmtime_instance_new(
+            if error := ffi.wasmtime_instance_new(
                 store._context,
                 module._ptr,
                 imports_ptr,
                 len(imports),
                 byref(instance),
-                trap)
-            if error:
+                trap,
+            ):
                 raise WasmtimeError._from_ptr(error)
         self._instance = instance
         self._exports = None
@@ -96,7 +96,7 @@ class InstanceExports:
     def __getitem__(self, idx: Union[int, str]) -> AsExtern:
         ret = self.get(idx)
         if ret is None:
-            msg = "failed to find export {}".format(idx)
+            msg = f"failed to find export {idx}"
             if isinstance(idx, str):
                 raise KeyError(msg)
             raise IndexError(msg)
@@ -111,6 +111,4 @@ class InstanceExports:
     def get(self, idx: Union[int, str]) -> Optional[AsExtern]:
         if isinstance(idx, str):
             return self._extern_map.get(idx)
-        if idx < len(self._extern_list):
-            return self._extern_list[idx]
-        return None
+        return self._extern_list[idx] if idx < len(self._extern_list) else None
