@@ -48,14 +48,14 @@ class Linker:
         module_buf = create_string_buffer(module_bytes)
         name_bytes = name.encode('utf-8')
         name_buf = create_string_buffer(name_bytes)
-        error = ffi.wasmtime_linker_define(
+        if error := ffi.wasmtime_linker_define(
             self._ptr,
             module_buf,
             len(module_bytes),
             name_buf,
             len(name_bytes),
-            byref(raw_item))
-        if error:
+            byref(raw_item),
+        ):
             raise WasmtimeError._from_ptr(error)
 
     def define_func(self, module: str, name: str, ty: FuncType, func: Callable[..., Any], access_caller: bool = False) -> None:
@@ -74,7 +74,7 @@ class Linker:
         if not isinstance(ty, FuncType):
             raise TypeError("expected a FuncType")
         idx = FUNCTIONS.allocate((func, ty.results, access_caller))
-        error = ffi.wasmtime_linker_define_func(
+        if error := ffi.wasmtime_linker_define_func(
             self._ptr,
             module_buf,
             len(module_bytes),
@@ -83,8 +83,8 @@ class Linker:
             ty._ptr,
             trampoline,
             idx,
-            finalize)
-        if error:
+            finalize,
+        ):
             raise WasmtimeError._from_ptr(error)
 
     def define_instance(self, store: Storelike, name: str, instance: Instance) -> None:
@@ -102,12 +102,13 @@ class Linker:
             raise TypeError("expected an `Instance`")
         name_bytes = name.encode('utf8')
         name_buf = create_string_buffer(name_bytes)
-        error = ffi.wasmtime_linker_define_instance(self._ptr,
-                                                    store._context,
-                                                    name_buf,
-                                                    len(name_bytes),
-                                                    byref(instance._instance))
-        if error:
+        if error := ffi.wasmtime_linker_define_instance(
+            self._ptr,
+            store._context,
+            name_buf,
+            len(name_bytes),
+            byref(instance._instance),
+        ):
             raise WasmtimeError._from_ptr(error)
 
     def define_wasi(self) -> None:
@@ -121,8 +122,7 @@ class Linker:
         This function will raise an error if shadowing is disallowed and a name
         was previously defined.
         """
-        error = ffi.wasmtime_linker_define_wasi(self._ptr)
-        if error:
+        if error := ffi.wasmtime_linker_define_wasi(self._ptr):
             raise WasmtimeError._from_ptr(error)
 
     def define_module(self, store: Storelike, name: str, module: Module) -> None:
@@ -142,8 +142,9 @@ class Linker:
             raise TypeError("expected a `Module`")
         name_bytes = name.encode('utf-8')
         name_buf = create_string_buffer(name_bytes)
-        error = ffi.wasmtime_linker_module(self._ptr, store._context, name_buf, len(name_bytes), module._ptr)
-        if error:
+        if error := ffi.wasmtime_linker_module(
+            self._ptr, store._context, name_buf, len(name_bytes), module._ptr
+        ):
             raise WasmtimeError._from_ptr(error)
 
     def instantiate(self, store: Storelike, module: Module) -> Instance:
@@ -160,9 +161,9 @@ class Linker:
         trap = POINTER(ffi.wasm_trap_t)()
         instance = ffi.wasmtime_instance_t()
         with enter_wasm(store) as trap:
-            error = ffi.wasmtime_linker_instantiate(
-                self._ptr, store._context, module._ptr, byref(instance), trap)
-            if error:
+            if error := ffi.wasmtime_linker_instantiate(
+                self._ptr, store._context, module._ptr, byref(instance), trap
+            ):
                 raise WasmtimeError._from_ptr(error)
         return Instance._from_raw(instance)
 
@@ -178,9 +179,9 @@ class Linker:
         name_bytes = name.encode('utf-8')
         name_buf = create_string_buffer(name_bytes)
         func = ffi.wasmtime_func_t()
-        error = ffi.wasmtime_linker_get_default(self._ptr, store._context,
-                                                name_buf, len(name_bytes), byref(func))
-        if error:
+        if error := ffi.wasmtime_linker_get_default(
+            self._ptr, store._context, name_buf, len(name_bytes), byref(func)
+        ):
             raise WasmtimeError._from_ptr(error)
         return Func._from_raw(func)
 
@@ -196,11 +197,15 @@ class Linker:
         name_bytes = name.encode('utf-8')
         name_buf = create_string_buffer(name_bytes)
         item = ffi.wasmtime_extern_t()
-        ok = ffi.wasmtime_linker_get(self._ptr, store._context,
-                                     module_buf, len(module_bytes),
-                                     name_buf, len(name_bytes),
-                                     byref(item))
-        if ok:
+        if ok := ffi.wasmtime_linker_get(
+            self._ptr,
+            store._context,
+            module_buf,
+            len(module_bytes),
+            name_buf,
+            len(name_bytes),
+            byref(item),
+        ):
             return wrap_extern(item)
         raise WasmtimeError("item not defined in linker")
 

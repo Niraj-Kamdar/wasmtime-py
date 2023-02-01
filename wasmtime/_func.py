@@ -74,11 +74,15 @@ class Func:
         ty = self.type(store)
         param_tys = ty.params
         if len(params) > len(param_tys):
-            raise WasmtimeError("too many parameters provided: given %s, expected %s" %
-                                (len(params), len(param_tys)))
+            raise WasmtimeError(
+                f"too many parameters provided: given {len(params)}, expected {len(param_tys)}"
+            )
+
         if len(params) < len(param_tys):
-            raise WasmtimeError("too few parameters provided: given %s, expected %s" %
-                                (len(params), len(param_tys)))
+            raise WasmtimeError(
+                f"too few parameters provided: given {len(params)}, expected {len(param_tys)}"
+            )
+
 
         param_vals = [Val._convert(ty, params[i]) for i, ty in enumerate(param_tys)]
         params_ptr = (ffi.wasmtime_val_t * len(params))()
@@ -89,21 +93,19 @@ class Func:
         results_ptr = (ffi.wasmtime_val_t * len(result_tys))()
 
         with enter_wasm(store) as trap:
-            error = ffi.wasmtime_func_call(
+            if error := ffi.wasmtime_func_call(
                 store._context,
                 byref(self._func),
                 params_ptr,
                 len(params),
                 results_ptr,
                 len(result_tys),
-                trap)
-            if error:
+                trap,
+            ):
                 raise WasmtimeError._from_ptr(error)
 
-        results = []
-        for i in range(0, len(result_tys)):
-            results.append(Val(results_ptr[i]).value)
-        if len(results) == 0:
+        results = [Val(results_ptr[i]).value for i in range(len(result_tys))]
+        if not results:
             return None
         elif len(results) == 1:
             return results[0]
@@ -133,7 +135,7 @@ class Caller:
 
         ret = self.get(name)
         if ret is None:
-            raise KeyError("failed to find export {}".format(name))
+            raise KeyError(f"failed to find export {name}")
         return ret
 
     def get(self, name: str) -> Optional[AsExtern]:
@@ -155,8 +157,9 @@ class Caller:
 
         # And if we're not invalidated we can perform the actual lookup
         item = ffi.wasmtime_extern_t()
-        ok = ffi.wasmtime_caller_export_get(self._ptr, name_buf, len(name_bytes), byref(item))
-        if ok:
+        if ok := ffi.wasmtime_caller_export_get(
+            self._ptr, name_buf, len(name_bytes), byref(item)
+        ):
             return wrap_extern(item)
         else:
             return None
@@ -164,9 +167,7 @@ class Caller:
 
 def extract_val(val: Val) -> IntoVal:
     a = val.value
-    if a is not None:
-        return a
-    return val
+    return a if a is not None else val
 
 
 @ffi.wasmtime_func_callback_t  # type: ignore
@@ -179,8 +180,7 @@ def trampoline(idx, caller, params, nparams, results, nresults):
             caller._context = ffi.wasmtime_caller_context(caller._ptr)
             pyparams.append(caller)
 
-        for i in range(0, nparams):
-            pyparams.append(Val._value(params[i]))
+        pyparams.extend(Val._value(params[i]) for i in range(nparams))
         pyresults = func(*pyparams)
         if nresults == 0:
             if pyresults is not None:

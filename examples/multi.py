@@ -31,7 +31,7 @@ g = instance.exports(store)["g"]
 
 print("Calling export \"g\"...")
 results = g(store, 1, 3)
-print("> {} {}".format(results[0], results[1]))
+print(f"> {results[0]} {results[1]}")
 
 assert(results[0] == 4)
 assert(results[1] == 2)

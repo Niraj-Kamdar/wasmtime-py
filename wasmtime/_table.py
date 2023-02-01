@@ -16,8 +16,9 @@ class Table:
         init_val = Val._convert(ty.element, init)
 
         table = ffi.wasmtime_table_t()
-        error = ffi.wasmtime_table_new(store._context, ty._ptr, byref(init_val._unwrap_raw()), byref(table))
-        if error:
+        if error := ffi.wasmtime_table_new(
+            store._context, ty._ptr, byref(init_val._unwrap_raw()), byref(table)
+        ):
             raise WasmtimeError._from_ptr(error)
         self._table = table
 
@@ -51,8 +52,13 @@ class Table:
         """
         init_val = Val._convert(self.type(store).element, init)
         prev = c_uint32(0)
-        error = ffi.wasmtime_table_grow(store._context, byref(self._table), c_uint32(amt), byref(init_val._unwrap_raw()), byref(prev))
-        if error:
+        if error := ffi.wasmtime_table_grow(
+            store._context,
+            byref(self._table),
+            c_uint32(amt),
+            byref(init_val._unwrap_raw()),
+            byref(prev),
+        ):
             raise WasmtimeError._from_ptr(error)
         return prev.value
 
@@ -74,10 +80,7 @@ class Table:
         if not ok:
             return None
         val = Val(raw)
-        if val.value:
-            return val.value
-        else:
-            return val
+        return val.value or val
 
     def set(self, store: Store, idx: int, val: IntoVal) -> None:
         """
@@ -93,8 +96,9 @@ class Table:
         Raises a `WasmtimeError` if `idx` is out of bounds.
         """
         value = Val._convert(self.type(store).element, val)
-        error = ffi.wasmtime_table_set(store._context, byref(self._table), idx, byref(value._unwrap_raw()))
-        if error:
+        if error := ffi.wasmtime_table_set(
+            store._context, byref(self._table), idx, byref(value._unwrap_raw())
+        ):
             raise WasmtimeError._from_ptr(error)
 
     def _as_extern(self) -> ffi.wasmtime_extern_t:

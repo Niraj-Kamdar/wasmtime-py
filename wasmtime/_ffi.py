@@ -15,19 +15,22 @@ elif sys.platform == 'win32':
 elif sys.platform == 'darwin':
     libname = '_libwasmtime.dylib'
 else:
-    raise RuntimeError("unsupported platform `{}` for wasmtime".format(sys.platform))
+    raise RuntimeError(f"unsupported platform `{sys.platform}` for wasmtime")
 
 machine = platform.machine()
 if machine == 'AMD64':
     machine = 'x86_64'
 if machine == 'arm64':
     machine = 'aarch64'
-if machine != 'x86_64' and machine != 'aarch64':
-    raise RuntimeError("unsupported architecture for wasmtime: {}".format(machine))
+if machine not in ['x86_64', 'aarch64']:
+    raise RuntimeError(f"unsupported architecture for wasmtime: {machine}")
 
-filename = os.path.join(os.path.dirname(__file__), sys.platform + '-' + machine, libname)
+filename = os.path.join(
+    os.path.dirname(__file__), f'{sys.platform}-{machine}', libname
+)
+
 if not os.path.exists(filename):
-    raise RuntimeError("precompiled wasmtime binary not found at `{}`".format(filename))
+    raise RuntimeError(f"precompiled wasmtime binary not found at `{filename}`")
 dll = cdll.LoadLibrary(filename)
 
 WASM_I32 = c_uint8(0)
@@ -107,8 +110,5 @@ def str_to_name(s: str, trailing_nul: bool = False) -> wasm_byte_vec_t:
         raise TypeError("expected a string")
     s_bytes = s.encode('utf8')
     buf = cast(create_string_buffer(s_bytes), POINTER(c_uint8))
-    if trailing_nul:
-        extra = 1
-    else:
-        extra = 0
+    extra = 1 if trailing_nul else 0
     return wasm_byte_vec_t(len(s_bytes) + extra, buf)

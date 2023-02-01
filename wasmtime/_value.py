@@ -104,7 +104,7 @@ class Val:
             return Val.externref(None)
         if ty == ValType.funcref():
             return Val.funcref(None)
-        raise WasmtimeError("Invalid reference type for `ref_null`: %s" % ty)
+        raise WasmtimeError(f"Invalid reference type for `ref_null`: {ty}")
 
     def __init__(self, raw: wasmtime_val_t):
         self._raw = raw
@@ -178,7 +178,7 @@ class Val:
             return Val._as_externref(raw)
         if raw.kind == WASMTIME_FUNCREF.value:
             return Val._as_funcref(raw)
-        raise WasmtimeError("Unkown `wasmtime_valkind_t`: {}".format(raw.kind))
+        raise WasmtimeError(f"Unkown `wasmtime_valkind_t`: {raw.kind}")
 
     @property
     def value(self) -> typing.Union[int, float, "wasmtime.Func", typing.Any]:
@@ -195,40 +195,28 @@ class Val:
         Get the 32-bit integer value of this value, or `None` if it's not an i32
         """
         raw = self._unwrap_raw()
-        if raw.kind == WASMTIME_I32.value:
-            return int(raw.of.i32)
-        else:
-            return None
+        return int(raw.of.i32) if raw.kind == WASMTIME_I32.value else None
 
     def as_i64(self) -> typing.Optional[int]:
         """
         Get the 64-bit integer value of this value, or `None` if it's not an i64
         """
         raw = self._unwrap_raw()
-        if raw.kind == WASM_I64.value:
-            return raw.of.i64
-        else:
-            return None
+        return raw.of.i64 if raw.kind == WASM_I64.value else None
 
     def as_f32(self) -> typing.Optional[float]:
         """
         Get the 32-bit float value of this value, or `None` if it's not an f32
         """
         raw = self._unwrap_raw()
-        if raw.kind == WASMTIME_F32.value:
-            return raw.of.f32
-        else:
-            return None
+        return raw.of.f32 if raw.kind == WASMTIME_F32.value else None
 
     def as_f64(self) -> typing.Optional[float]:
         """
         Get the 64-bit float value of this value, or `None` if it's not an f64
         """
         raw = self._unwrap_raw()
-        if raw.kind == WASMTIME_F64.value:
-            return raw.of.f64
-        else:
-            return None
+        return raw.of.f64 if raw.kind == WASMTIME_F64.value else None
 
     @classmethod
     def _as_externref(cls, raw: wasmtime_val_t) -> typing.Optional[typing.Any]:

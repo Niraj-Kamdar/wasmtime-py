@@ -37,8 +37,9 @@ class Module:
         # figure this out.
         binary = (c_uint8 * len(wasm)).from_buffer_copy(wasm)
         ptr = POINTER(ffi.wasmtime_module_t)()
-        error = ffi.wasmtime_module_new(engine._ptr, binary, len(wasm), byref(ptr))
-        if error:
+        if error := ffi.wasmtime_module_new(
+            engine._ptr, binary, len(wasm), byref(ptr)
+        ):
             raise WasmtimeError._from_ptr(error)
         self._ptr = ptr
 
@@ -66,14 +67,12 @@ class Module:
 
         ptr = POINTER(ffi.wasmtime_module_t)()
 
-        # TODO: can the copy be avoided here? I can't for the life of me
-        # figure this out.
-        error = ffi.wasmtime_module_deserialize(
+        if error := ffi.wasmtime_module_deserialize(
             engine._ptr,
             (c_uint8 * len(encoded)).from_buffer_copy(encoded),
             len(encoded),
-            byref(ptr))
-        if error:
+            byref(ptr),
+        ):
             raise WasmtimeError._from_ptr(error)
         ret: "Module" = cls.__new__(cls)
         ret._ptr = ptr
@@ -90,11 +89,9 @@ class Module:
 
         ptr = POINTER(ffi.wasmtime_module_t)()
         path_bytes = path.encode('utf-8')
-        error = ffi.wasmtime_module_deserialize_file(
-            engine._ptr,
-            path_bytes,
-            byref(ptr))
-        if error:
+        if error := ffi.wasmtime_module_deserialize_file(
+            engine._ptr, path_bytes, byref(ptr)
+        ):
             raise WasmtimeError._from_ptr(error)
         ret: "Module" = cls.__new__(cls)
         ret._ptr = ptr
@@ -115,9 +112,7 @@ class Module:
         # TODO: can the copy be avoided here? I can't for the life of me
         # figure this out.
         buf = (c_uint8 * len(wasm)).from_buffer_copy(wasm)
-        error = ffi.wasmtime_module_validate(engine._ptr, buf, len(wasm))
-
-        if error:
+        if error := ffi.wasmtime_module_validate(engine._ptr, buf, len(wasm)):
             raise WasmtimeError._from_ptr(error)
 
 #     @property
@@ -137,10 +132,10 @@ class Module:
 
         imports = ImportTypeList()
         ffi.wasmtime_module_imports(self._ptr, byref(imports.vec))
-        ret = []
-        for i in range(0, imports.vec.size):
-            ret.append(ImportType._from_ptr(imports.vec.data[i], imports))
-        return ret
+        return [
+            ImportType._from_ptr(imports.vec.data[i], imports)
+            for i in range(imports.vec.size)
+        ]
 
     @property
     def exports(self) -> typing.List[ExportType]:
@@ -150,10 +145,10 @@ class Module:
 
         exports = ExportTypeList()
         ffi.wasmtime_module_exports(self._ptr, byref(exports.vec))
-        ret = []
-        for i in range(0, exports.vec.size):
-            ret.append(ExportType._from_ptr(exports.vec.data[i], exports))
-        return ret
+        return [
+            ExportType._from_ptr(exports.vec.data[i], exports)
+            for i in range(exports.vec.size)
+        ]
 
     def serialize(self) -> bytearray:
         """
@@ -164,8 +159,7 @@ class Module:
         module.
         """
         raw = ffi.wasm_byte_vec_t()
-        err = ffi.wasmtime_module_serialize(self._ptr, byref(raw))
-        if err:
+        if err := ffi.wasmtime_module_serialize(self._ptr, byref(raw)):
             raise WasmtimeError._from_ptr(err)
         ret = ffi.to_bytes(raw)
         ffi.wasm_byte_vec_delete(byref(raw))
